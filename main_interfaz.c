@@ -2,7 +2,6 @@
 
 // Callback auxiliar para manejar el cierre de las ventanas de forma segura
 static void on_window_destroy(GtkWidget *widget, gpointer user_data) {
-    g_print("🔔 [SIGNAL] Ventana cerrada. Saliendo de la aplicación...\n");
     gtk_main_quit();
 }
 
