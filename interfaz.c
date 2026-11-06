@@ -1,6 +1,15 @@
 #include "interfaz.h"
+#include <math.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "analisis.h"
+#include "problema.h"
+#include "salida.h"
+
+// Los coeficientes deben ser razonables para que la aritmetica no se desborde
+#define VALOR_MAXIMO 1e12
 
 SolverData s_data = {0};
 
@@ -21,91 +30,159 @@ void mostrar_error(GtkWindow *parent, const gchar *mensaje) {
     gtk_widget_destroy(dialog);
 }
 
+/*  Convierte el texto de un entry a numero real.
+    Acepta punto o coma como separador decimal (en un sistema en espanol,
+    atof() leeria "1.5" como 1). Devuelve FALSE si no es un numero valido. */
+static gboolean leer_numero(GtkWidget *entry, double *valor) {
+    gchar *texto = g_strdup(gtk_entry_get_text(GTK_ENTRY(entry)));
+    gboolean ok = FALSE;
+
+    g_strstrip(texto);
+    g_strdelimit(texto, ",", '.');
+
+    if (texto[0] != '\0') {
+        gchar *fin = NULL;
+        double v = g_ascii_strtod(texto, &fin);
+
+        if (*fin == '\0' && isfinite(v) && fabs(v) <= VALOR_MAXIMO) {
+            *valor = v;
+            ok = TRUE;
+        }
+    }
+
+    g_free(texto);
+    return ok;
+}
+
+static void error_formato(GtkWindow *ventana, const gchar *formato, ...) {
+    va_list args;
+    va_start(args, formato);
+    gchar *mensaje = g_strdup_vprintf(formato, args);
+    va_end(args);
+
+    mostrar_error(ventana, mensaje);
+    g_free(mensaje);
+}
+
+/*  Lee y valida todos los datos de la interfaz y llena la estructura Problema.
+    Si algo es invalido muestra el error y devuelve FALSE. */
+static gboolean leer_problema(GtkWindow *ventana, AppData *app, Problema *p) {
+    int V = s_data.num_vars;
+    int R = s_data.num_rest;
+
+    memset(p, 0, sizeof(Problema));
+    p->num_variables = V;
+    p->num_restricciones = R;
+    g_strlcpy(p->nombre, app->nombre_problema, sizeof(p->nombre));
+
+    gint objetivo = gtk_combo_box_get_active(GTK_COMBO_BOX(s_data.entry_opt));
+    if (objetivo == 0) {
+        p->maximizar = 1;
+    } else if (objetivo == 1) {
+        p->maximizar = 0;
+    } else {
+        mostrar_error(ventana, "Error: Seleccione Maximizar o Minimizar.");
+        return FALSE;
+    }
+
+    // Nombres de las variables (hileras LaTeX; por defecto $x_1$, $x_2$, ...)
+    for (int j = 0; j < V; j++) {
+        gchar *nombre = g_strdup(gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j])));
+        g_strstrip(nombre);
+
+        if (nombre[0] == '\0') {
+            g_snprintf(p->nombres_variables[j], MAX_NOMBRE_VARIABLE, "X%d", j + 1);
+        } else if (strlen(nombre) >= MAX_NOMBRE_VARIABLE) {
+            g_free(nombre);
+            error_formato(ventana, "Error: el nombre de la variable %d es demasiado largo (máximo %d caracteres).",
+                          j + 1, MAX_NOMBRE_VARIABLE - 1);
+            return FALSE;
+        } else {
+            g_strlcpy(p->nombres_variables[j], nombre, MAX_NOMBRE_VARIABLE);
+        }
+        g_free(nombre);
+    }
+
+    for (int j = 0; j < V; j++) {
+        if (!leer_numero(s_data.entries_fo_coefs[j], &p->funcion_objetivo[j])) {
+            error_formato(ventana, "Error: en la función objetivo, el coeficiente de la variable %d no es un número válido.", j + 1);
+            return FALSE;
+        }
+    }
+
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < V; j++) {
+            if (!leer_numero(s_data.entries_rest_coefs[i][j], &p->restricciones[i][j])) {
+                error_formato(ventana, "Error: en la restricción %d, el coeficiente de la variable %d no es un número válido.", i + 1, j + 1);
+                return FALSE;
+            }
+        }
+
+        if (!leer_numero(s_data.entries_rest_rhs[i], &p->lado_derecho[i])) {
+            error_formato(ventana, "Error: en la restricción %d, el lado derecho no es un número válido.", i + 1);
+            return FALSE;
+        }
+
+        if (p->lado_derecho[i] < 0) {
+            error_formato(ventana, "Error: en la restricción %d, el lado derecho debe ser mayor o igual a cero.", i + 1);
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
 void on_btn_resolver_clicked(GtkButton *button, gpointer user_data) {
     GtkWindow *ventana_actual = GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(button)));
+    AppData *app = (AppData *)user_data;
 
+    if (app == NULL || s_data.entry_opt == NULL) {
+        return;
+    }
+
+    /*
+    s_data.checkPresionado es un booleano: TRUE para mostrar todas las tablas
+    intermedias del simplex, FALSE para mostrar solo la inicial y la final
+    */
     if (s_data.check_ver_tablas) {
         s_data.checkPresionado = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(s_data.check_ver_tablas));
     }
 
-    /*
-    la variable s_data.checkPresionado es un booleano de True o False : True es para mostrar todas
-    las tablas del simplex, y False es solo para mostrar la final
-    */
-    
-
-    const gchar *modo = gtk_entry_get_text(GTK_ENTRY(s_data.entry_opt));
-    
-    if ((strcmp(modo, "Maximizar") != 0) && (strcmp(modo, "Minimizar") != 0)) {
-        mostrar_error(ventana_actual, "Error: Debe ingresar Maximizar ó Minimizar");
+    Problema problema;
+    if (!leer_problema(ventana_actual, app, &problema)) {
         return;
     }
 
-    /*
-    Usar la variable "modo", para meterlo a la funciòn del sìmplex
-    */
-
-    gboolean operador_invalido = FALSE;
-    for (int i = 0; i < s_data.num_rest; i++) {
-        const gchar *op_str = gtk_entry_get_text(GTK_ENTRY(s_data.entries_rest_ops[i]));
-        if (strcmp(op_str, "<=") != 0) {
-            operador_invalido = TRUE;
-            break;
-        }
-    }
-
-    if (operador_invalido) {
-        mostrar_error(ventana_actual, "Error: Por ahora solo se permite el operador <= en las restricciones.");
+    Analisis analisis;
+    if (analizar_problema(&problema, &analisis) != 0) {
+        mostrar_error(ventana_actual, "Error: no hay memoria suficiente para resolver el problema.");
         return;
     }
 
-    int V = s_data.num_vars;
-    int R = s_data.num_rest;
-    int total_filas = R + 1;
-    int total_cols = V + R + 2;
+    generar_salida(ventana_actual, &problema, &analisis, s_data.checkPresionado);
 
-    double **tabla = g_malloc(total_filas * sizeof(double *));
-    for (int i = 0; i < total_filas; i++) {
-        tabla[i] = g_malloc0(total_cols * sizeof(double));
-    }
+    liberar_analisis(&analisis);
+}
 
-    tabla[0][0] = 1.0; 
-    for (int j = 0; j < V; j++) {
-        const gchar *val_str = gtk_entry_get_text(GTK_ENTRY(s_data.entries_fo_coefs[j]));
-        tabla[0][1 + j] = atof(val_str);
-    }
+static void actualizar_etiquetas_variables(GtkEditable *editable, gpointer data);
 
-    for (int i = 0; i < R; i++) {
-        int fila_tabla = i + 1;
-        tabla[fila_tabla][0] = 0.0; 
+/* Refresca los nombres de variables en la funcion objetivo y restricciones. */
+static void actualizar_etiquetas_variables(GtkEditable *editable, gpointer data) {
+    (void)editable;
+    (void)data;
+    if (!s_data.entries_nombres_vars) return;
 
-        for (int j = 0; j < V; j++) {
-            const gchar *coef_str = gtk_entry_get_text(GTK_ENTRY(s_data.entries_rest_coefs[i][j]));
-            tabla[fila_tabla][1 + j] = atof(coef_str);
+    for (int j = 0; j < s_data.num_vars; j++) {
+        const gchar *nombre = gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j]));
+        gchar *texto = g_strdup_printf(" %s ", nombre[0] ? nombre : " ");
+        if (s_data.labels_fo_vars && s_data.labels_fo_vars[j])
+            gtk_label_set_text(GTK_LABEL(s_data.labels_fo_vars[j]), texto);
+        for (int i = 0; i < s_data.num_rest; i++) {
+            if (s_data.labels_rest_vars && s_data.labels_rest_vars[i] && s_data.labels_rest_vars[i][j])
+                gtk_label_set_text(GTK_LABEL(s_data.labels_rest_vars[i][j]), texto);
         }
-
-        tabla[fila_tabla][1 + V + i] = 1.0;
-
-        const gchar *rhs_str = gtk_entry_get_text(GTK_ENTRY(s_data.entries_rest_rhs[i]));
-        tabla[fila_tabla][total_cols - 1] = atof(rhs_str);
+        g_free(texto);
     }
-
-    /*
-    La variable tabla tiene la taba de sìmplex en forma de matriz, esos elementos se deben transformar
-    a typedef struct TablaSimplex y la de Problema:
-    en dado caso, la variable s_data que es un typedef struct (veanlo en interfaz.h) tiene guardados todos los datos
-    del problema
-    */
-
-    /*
-    Aquì se transforma la tabla de interfaz gràfica a TablaSimplex y Problema y se ejectuta el algoritmo, para luego 
-    pasarlo a latex
-    */
-
-    for (int i = 0; i < total_filas; i++) {
-        g_free(tabla[i]);
-    }
-    g_free(tabla);
 }
 
 void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) {
@@ -119,6 +196,13 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
 
     if (s_data.entries_nombres_vars) g_free(s_data.entries_nombres_vars);
     if (s_data.entries_fo_coefs) g_free(s_data.entries_fo_coefs);
+    if (s_data.labels_fo_vars) g_free(s_data.labels_fo_vars);
+    if (s_data.labels_rest_vars) {
+        for (int i = 0; i < s_data.num_rest; i++) {
+            if (s_data.labels_rest_vars[i]) g_free(s_data.labels_rest_vars[i]);
+        }
+        g_free(s_data.labels_rest_vars);
+    }
     if (s_data.entries_rest_coefs) {
         for (int i = 0; i < s_data.num_rest; i++) {
             if (s_data.entries_rest_coefs[i]) g_free(s_data.entries_rest_coefs[i]);
@@ -132,7 +216,12 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
     s_data.num_rest = num_rest;
     s_data.entries_nombres_vars = g_malloc(num_vars * sizeof(GtkWidget *));
     s_data.entries_fo_coefs = g_malloc(num_vars * sizeof(GtkWidget *));
-    
+    s_data.labels_fo_vars = g_malloc(num_vars * sizeof(GtkWidget *));
+    s_data.labels_rest_vars = g_malloc(num_rest * sizeof(GtkWidget **));
+    for (int i = 0; i < num_rest; i++) {
+        s_data.labels_rest_vars[i] = g_malloc(num_vars * sizeof(GtkWidget *));
+    }
+
     s_data.entries_rest_coefs = g_malloc(num_rest * sizeof(GtkWidget **));
     for (int i = 0; i < num_rest; i++) {
         s_data.entries_rest_coefs[i] = g_malloc(num_vars * sizeof(GtkWidget *));
@@ -154,11 +243,13 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
         gtk_grid_attach(GTK_GRID(grid), lbl_var, 0, fila, 1, 1);
 
         GtkWidget *entry_nombre_var = gtk_entry_new();
-        g_snprintf(temp_label, sizeof(temp_label), "x%d", j + 1);
+        g_snprintf(temp_label, sizeof(temp_label), "X%d", j + 1);
         gtk_entry_set_text(GTK_ENTRY(entry_nombre_var), temp_label);
         gtk_grid_attach(GTK_GRID(grid), entry_nombre_var, 1, fila, 1, 1);
 
         s_data.entries_nombres_vars[j] = entry_nombre_var;
+        g_signal_connect(entry_nombre_var, "changed",
+                         G_CALLBACK(actualizar_etiquetas_variables), NULL);
         fila++;
     }
 
@@ -170,9 +261,11 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
 
     GtkWidget *box_fo = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 
-    s_data.entry_opt = gtk_entry_new();
-    gtk_entry_set_text(GTK_ENTRY(s_data.entry_opt), "Maximizar");
-    gtk_widget_set_size_request(s_data.entry_opt, 100, -1);
+    s_data.entry_opt = gtk_combo_box_text_new();
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(s_data.entry_opt), "Maximizar");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(s_data.entry_opt), "Minimizar");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(s_data.entry_opt), 0);
+    gtk_widget_set_size_request(s_data.entry_opt, 120, -1);
     gtk_container_add(GTK_CONTAINER(box_fo), s_data.entry_opt);
 
     GtkWidget *label_z = gtk_label_new("   Z =");
@@ -184,9 +277,10 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
         gtk_widget_set_size_request(s_data.entries_fo_coefs[j], 50, -1);
         gtk_container_add(GTK_CONTAINER(box_fo), s_data.entries_fo_coefs[j]);
 
-        gchar temp_var[32];
-        g_snprintf(temp_var, sizeof(temp_var), " x%d ", j + 1);
+        gchar temp_var[96];
+        g_snprintf(temp_var, sizeof(temp_var), " %s ", gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j])));
         GtkWidget *lbl_x = gtk_label_new(temp_var);
+        s_data.labels_fo_vars[j] = lbl_x;
         gtk_container_add(GTK_CONTAINER(box_fo), lbl_x);
 
         if (j < num_vars - 1) {
@@ -210,9 +304,10 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
             gtk_widget_set_size_request(s_data.entries_rest_coefs[i][j], 50, -1);
             gtk_container_add(GTK_CONTAINER(box_rest), s_data.entries_rest_coefs[i][j]);
 
-            gchar temp_var[32];
-            g_snprintf(temp_var, sizeof(temp_var), " x%d ", j + 1);
+            gchar temp_var[96];
+            g_snprintf(temp_var, sizeof(temp_var), " %s ", gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j])));
             GtkWidget *lbl_x = gtk_label_new(temp_var);
+            s_data.labels_rest_vars[i][j] = lbl_x;
             gtk_container_add(GTK_CONTAINER(box_rest), lbl_x);
 
             if (j < num_vars - 1) {
@@ -221,8 +316,7 @@ void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) 
             }
         }
 
-        s_data.entries_rest_ops[i] = gtk_entry_new();
-        gtk_entry_set_text(GTK_ENTRY(s_data.entries_rest_ops[i]), "<=");
+        s_data.entries_rest_ops[i] = gtk_label_new("≤");
         gtk_widget_set_size_request(s_data.entries_rest_ops[i], 45, -1);
         gtk_container_add(GTK_CONTAINER(box_rest), s_data.entries_rest_ops[i]);
 

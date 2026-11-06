@@ -13,11 +13,13 @@ typedef struct {
 typedef struct {
     int num_vars;
     int num_rest;
-    GtkWidget *entry_opt;    //     Minimizar /Maximizar           
+    GtkWidget *entry_opt;    // Selector: Maximizar / Minimizar           
     GtkWidget **entries_nombres_vars;   // Nombre de las variables
+    GtkWidget **labels_fo_vars;       // Etiquetas dinamicas en funcion objetivo
+    GtkWidget ***labels_rest_vars;    // Etiquetas dinamicas en restricciones
     GtkWidget **entries_fo_coefs;       //Coeficientes de la funciòn objetivo
     GtkWidget ***entries_rest_coefs;    //Coeficientes de las restricciones
-    GtkWidget **entries_rest_ops;       //Operaciones de las restricciones (por ahora <=)
+    GtkWidget **entries_rest_ops;       // Etiquetas fijas de operador menor o igual
     GtkWidget **entries_rest_rhs;       // Lado derecho
     GtkWidget *check_ver_tablas;        // Chheckbox
     gboolean checkPresionado;           // Booleano para saber si mostrar todas las tablas o no

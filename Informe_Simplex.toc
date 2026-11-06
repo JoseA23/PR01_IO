@@ -1,0 +1,17 @@
+\babel@toc {spanish}{}\relax 
+\contentsline {chapter}{\numberline {1}Introducción}{2}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Antecedentes}{2}{section.1.1}%
+\contentsline {chapter}{\numberline {2}Diseño de la arquitectura y la interfaz gráfica}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Entorno tecnológico}{3}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Diseño de la interfaz}{3}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Generación dinámica de widgets}{3}{subsection.2.2.1}%
+\contentsline {chapter}{\numberline {3}Problema original}{5}{chapter.3}%
+\contentsline {chapter}{\numberline {4}Desarrollo del algoritmo}{6}{chapter.4}%
+\contentsline {subsection}{\numberline {4.0.1}Tabla inicial}{6}{subsection.4.0.1}%
+\contentsline {subsection}{\numberline {4.0.2}Tabla final}{6}{subsection.4.0.2}%
+\contentsline {subsection}{\numberline {4.0.3}Segunda tabla final (solución alternativa)}{6}{subsection.4.0.3}%
+\contentsline {chapter}{\numberline {5}Solución y análisis de resultados}{7}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Variables de holgura}{7}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Soluciones múltiples}{7}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Resumen de ejecución}{7}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Referencias}{8}{chapter.6}%

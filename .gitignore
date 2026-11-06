@@ -1,0 +1,10 @@
+# compilados
+otro_simplex
+app
+*.o
+*.d
+tests/test_motor
+tests/test_gui
+# respaldos del editor / Glade
+*~
+tests/harness

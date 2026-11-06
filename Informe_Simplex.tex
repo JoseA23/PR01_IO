@@ -1,0 +1,155 @@
+\documentclass[11pt,oneside]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{lmodern,microtype}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage[table]{xcolor}
+\usepackage{colortbl,booktabs,array,longtable,float}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\definecolor{azul}{HTML}{17365D}
+\definecolor{turquesa}{HTML}{168C91}
+\definecolor{azulclaro}{HTML}{EAF2F8}
+\definecolor{dorado}{HTML}{D6A84B}
+\definecolor{verde}{HTML}{DDF2E5}
+\definecolor{rojo}{HTML}{FCE4E4}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black,citecolor=black}
+\pagestyle{fancy}\fancyhf{}\lhead{Proyecto Simplex}\rhead{Investigación de Operaciones}\cfoot{\thepage}
+\setlength{\parskip}{5pt}\setlength{\parindent}{0pt}
+\begin{document}
+\begin{titlepage}
+\centering
+\vspace*{1.2cm}
+{\Large Instituto Tecnológico de Costa Rica}\\[0.3cm]
+{\large Escuela de Ingeniería en Computación}\\[1.7cm]
+{\rule{0.85\textwidth}{1.2pt}}\\[0.8cm]
+{\Huge\bfseries Proyecto Programado 1}\\[0.35cm]
+{\LARGE\bfseries Método Simplex}\\[0.8cm]
+{\large Informe de ejecución y resultados}\\[0.5cm]
+{\rule{0.55\textwidth}{1pt}}\\[1.2cm]
+\begin{minipage}{0.82\textwidth}\centering\large
+\textbf{Integrantes}\\[0.35cm]
+Jose Andrés Benavides Díaz\\
+Axel Fabián Chavarría Gutiérrez\\
+Christopher Jiménez Gutiérrez\\[0.8cm]
+\textbf{Curso:} IC6400 -- Investigación de Operaciones\\
+\textbf{Periodo:} II Semestre 2026\\
+\textbf{Fecha:} Noviembre 2026
+\end{minipage}\vfill
+{\large San José, Costa Rica}\\
+\end{titlepage}
+\tableofcontents\clearpage
+\chapter{Introducción}
+La programación lineal es una técnica matemática que permite resolver problemas de maximización o minimización de una función objetivo lineal, sujeta a un conjunto de restricciones. El método símplex resuelve estos problemas mediante operaciones algebraicas sobre una tabla: transforma las restricciones en ecuaciones utilizando variables de holgura y recorre soluciones básicas factibles hasta encontrar una solución óptima o identificar una condición especial.
+
+\section{Antecedentes}
+La programación lineal surge como una herramienta matemática para modelar y resolver problemas de optimización, permitiendo maximizar o minimizar una función objetivo lineal sujeta a restricciones expresadas mediante desigualdades o igualdades. Su objetivo es proporcionar un marco analítico estructurado que pueda ser resuelto de manera eficiente mediante métodos algorítmicos.
+
+En 1947, el matemático George Dantzig, durante su labor en la Fuerza Aérea de los Estados Unidos, ideó el método Simplex. Dantzig desarrolló este algoritmo para dar solución a problemas de planificación y logística militar, estableciendo un procedimiento que permite recorrer de forma eficiente los vértices (puntos de un área) de la región factible (región que cumple todas las restricciones) sin necesidad de evaluarlos todos por fuerza bruta, optimizando así la búsqueda de la solución óptima [1].
+\chapter{Diseño de la arquitectura y la interfaz gráfica}
+La aplicación está diseñada para que el usuario, mediante una interfaz gráfica, pueda seleccionar la cantidad de variables, restricciones y el nombre del problema, para seguidamente ingresar los coeficientes de la matriz símplex y los nombres de las variables.
+
+\section{Entorno tecnológico}
+El desarrollo del proyecto se llevó a cabo bajo los siguientes entornos tecnológicos:
+\begin{itemize}
+\item \textbf{Lenguaje C:} Lenguaje utilizado para implementar el programa y gestionar la memoria.
+\item \textbf{Sistema operativo Linux:} El proyecto está preparado para compilarse y ejecutarse en este sistema operativo, junto con las herramientas requeridas para su funcionamiento.
+\item \textbf{GTK y Glade:} Se utilizaron para desarrollar la interfaz gráfica y separar la presentación visual de la lógica del programa.
+\end{itemize}
+\section{Diseño de la interfaz}
+La interfaz gráfica permite ingresar los datos del problema de forma organizada, facilitando la configuración de las variables, la función objetivo y las restricciones.
+
+\subsection{Generación dinámica de widgets}
+La primera ventana de la interfaz gráfica contiene los siguientes elementos estáticos:
+\begin{itemize}
+\item Un espacio para ingresar el nombre del problema.
+\item Un botón para continuar a la siguiente ventana, donde se generan los widgets de manera dinámica.
+\item Controles de incremento y decremento para definir la cantidad de variables y restricciones. También permiten escribir directamente un valor numérico.
+\end{itemize}
+La segunda ventana contiene un GtkGrid cuyas celdas se generan dinámicamente a partir de los datos ingresados por el usuario. El programa construye los elementos de la siguiente manera:
+\begin{itemize}
+\item Una fila por cada variable $X_i$: incluye la etiqueta de la variable y un campo para asignarle un nombre (por defecto, $X_i$), además de las columnas correspondientes a las variables.
+\item Una fila para la función objetivo con los siguientes elementos:
+  \begin{itemize}
+  \item Un selector del tipo de optimización, con las opciones "Maximizar" y "Minimizar".
+  \item La etiqueta "Z=" para identificar la función objetivo.
+  \item Campos numéricos para ingresar el coeficiente de cada variable.
+  \end{itemize}
+\item Una fila con la etiqueta "Sujeto a:" para identificar la sección de restricciones.
+\item Una fila para cada restricción, con un campo numérico para el coeficiente de cada variable, la relación fija \(\leq\) y un campo para ingresar el lado derecho de la inecuación.
+\item Una fila con el botón "Resolver" para ejecutar el algoritmo símplex.
+\item Una casilla de verificación para elegir si se muestran todas las tablas del procedimiento o únicamente la tabla final.
+\end{itemize}
+\chapter{Problema original}
+\textbf{Nombre:} problema\\
+\textbf{Objetivo:} Maximizar\[ Z = 4\,\text{X1} + 14\,\text{X2} \]
+\textbf{Sujeto a:}
+\begin{align*}
+2\,\text{X1} + 7\,\text{X2} &\leq 21 \\
+7\,\text{X1} + 2\,\text{X2} &\leq 21 \\
+\text{Todas las variables son no negativas.}\end{align*}
+\chapter{Desarrollo del algoritmo}
+\subsection{Tabla inicial}
+\begin{table}[H]\centering\small
+\rowcolors{2}{azulclaro}{white}
+\begin{tabular}{crrrrr}\toprule
+Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
+\midrule
+$Z$ & -4 & -14 & 0 & 0 & 0 \\
+$s_{1}$ & 2 & 7 & 1 & 0 & 21 \\
+$s_{2}$ & 7 & 2 & 0 & 1 & 21 \\
+\bottomrule\end{tabular}\end{table}
+\subsection{Tabla final}
+\begin{table}[H]\centering\small
+\rowcolors{2}{azulclaro}{white}
+\begin{tabular}{crrrrr}\toprule
+Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
+\midrule
+$Z$ & 0 & \cellcolor{verde}0 & 2 & 0 & 42 \\
+$\text{X2}$ & 0.28571 & \cellcolor{verde}\cellcolor{dorado!55}\bfseries 1 & 0.14286 & 0 & 3 \\
+$s_{2}$ & 6.4286 & \cellcolor{verde}0 & -0.28571 & 1 & 15 \\
+\bottomrule\end{tabular}\end{table}
+\textbf{Pivote de la última iteración:} 7.\quad \textbf{Razón de la fila pivote:} $21/7 = 3$.\par
+\subsection{Segunda tabla final (solución alternativa)}
+\begin{table}[H]\centering\small
+\rowcolors{2}{azulclaro}{white}
+\begin{tabular}{crrrrr}\toprule
+Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
+\midrule
+$Z$ & 0 & 0 & 2 & 0 & 42 \\
+$\text{X2}$ & 0 & 1 & 0.15556 & -0.044444 & 2.3333 \\
+$\text{X1}$ & 1 & 0 & -0.044444 & 0.15556 & 2.3333 \\
+\bottomrule\end{tabular}\end{table}
+\chapter{Solución y análisis de resultados}
+\begin{center}\fbox{\parbox{0.88\textwidth}{\centering\Large\textbf{Solución óptima encontrada}}}\end{center}
+\begin{align*}\text{Valor óptimo: } Z^* &= 42\\
+\text{X1} &= 0\\
+\text{X2} &= 3\\
+\end{align*}
+\section{Variables de holgura}
+\begin{itemize}
+\item $s_{1}=0$
+\item $s_{2}=15$
+\end{itemize}
+\section{Soluciones múltiples}
+Se identificó otra solución óptima con el mismo valor objetivo $Z=42$.\begin{align*}
+\text{X1} &= 2.3333333\\
+\text{X2} &= 2.3333333\\
+\end{align*}Las soluciones sobre el segmento entre ambas soluciones también son óptimas.
+\begin{itemize}
+\item Solución alternativa 1: X1=0.58333, X2=2.8333
+\item Solución alternativa 2: X1=1.1667, X2=2.6667
+\item Solución alternativa 3: X1=1.75, X2=2.5
+\end{itemize}
+\section{Resumen de ejecución}
+Se generaron 2 tablas y se realizaron 1 iteraciones.
+\chapter{Referencias}
+\renewcommand{\labelenumi}{[\theenumi]}
+\begin{enumerate}
+\item G. B. Dantzig, \textit{Linear Programming and Extensions}. Princeton University Press, 1963.
+\item F. S. Hillier y G. J. Lieberman, \textit{Introduction to Operations Research}. McGraw-Hill.
+\end{enumerate}
+\end{document}
