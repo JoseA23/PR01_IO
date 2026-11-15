@@ -185,149 +185,445 @@ static void actualizar_etiquetas_variables(GtkEditable *editable, gpointer data)
     }
 }
 
+
 void construir_matriz_dinamica(GtkBuilder *builder, int num_vars, int num_rest) {
-    GtkWidget *grid = GTK_WIDGET(gtk_builder_get_object(builder, "gridMatriz"));
+
+    // Obtener el GtkGrid desde Glade
+    GtkWidget *grid = GTK_WIDGET(
+        gtk_builder_get_object(builder, "gridMatriz")
+    );
+
+    // Verificar que el objeto exista y sea un GtkGrid
+    if (grid == NULL || !GTK_IS_GRID(grid)) {
+        g_print("ERROR: gridMatriz no existe o no es un GtkGrid válido\n");
+        return;
+    }
+
+    // Obtener el CheckButton
+    s_data.check_ver_tablas = GTK_WIDGET(
+        gtk_builder_get_object(builder, "checkVerTablas")
+    );
 
 
-    
-    s_data.check_ver_tablas = GTK_WIDGET(gtk_builder_get_object(builder, "checkVerTablas"));
 
-    gtk_container_foreach(GTK_CONTAINER(grid), (GtkCallback)destruir_hijo, NULL);
+    GList *children = gtk_container_get_children(GTK_CONTAINER(grid));
 
-    if (s_data.entries_nombres_vars) g_free(s_data.entries_nombres_vars);
-    if (s_data.entries_fo_coefs) g_free(s_data.entries_fo_coefs);
-    if (s_data.labels_fo_vars) g_free(s_data.labels_fo_vars);
+    for (GList *iter = children; iter != NULL; iter = iter->next) {
+        gtk_widget_destroy(GTK_WIDGET(iter->data));
+    }
+
+    g_list_free(children);
+
+
+    if (s_data.entries_nombres_vars)
+        g_free(s_data.entries_nombres_vars);
+
+    if (s_data.entries_fo_coefs)
+        g_free(s_data.entries_fo_coefs);
+
+    if (s_data.labels_fo_vars)
+        g_free(s_data.labels_fo_vars);
+
     if (s_data.labels_rest_vars) {
         for (int i = 0; i < s_data.num_rest; i++) {
-            if (s_data.labels_rest_vars[i]) g_free(s_data.labels_rest_vars[i]);
+            if (s_data.labels_rest_vars[i])
+                g_free(s_data.labels_rest_vars[i]);
         }
         g_free(s_data.labels_rest_vars);
     }
+
     if (s_data.entries_rest_coefs) {
         for (int i = 0; i < s_data.num_rest; i++) {
-            if (s_data.entries_rest_coefs[i]) g_free(s_data.entries_rest_coefs[i]);
+            if (s_data.entries_rest_coefs[i])
+                g_free(s_data.entries_rest_coefs[i]);
         }
         g_free(s_data.entries_rest_coefs);
     }
-    if (s_data.entries_rest_ops) g_free(s_data.entries_rest_ops);
-    if (s_data.entries_rest_rhs) g_free(s_data.entries_rest_rhs);
+
+    if (s_data.entries_rest_ops)
+        g_free(s_data.entries_rest_ops);
+
+    if (s_data.entries_rest_rhs)
+        g_free(s_data.entries_rest_rhs);
+
+    // ==========================================
+    // ASIGNAR NUEVAS DIMENSIONES
+    // ==========================================
 
     s_data.num_vars = num_vars;
     s_data.num_rest = num_rest;
-    s_data.entries_nombres_vars = g_malloc(num_vars * sizeof(GtkWidget *));
-    s_data.entries_fo_coefs = g_malloc(num_vars * sizeof(GtkWidget *));
-    s_data.labels_fo_vars = g_malloc(num_vars * sizeof(GtkWidget *));
-    s_data.labels_rest_vars = g_malloc(num_rest * sizeof(GtkWidget **));
+
+    s_data.entries_nombres_vars = g_malloc(
+        num_vars * sizeof(GtkWidget *)
+    );
+
+    s_data.entries_fo_coefs = g_malloc(
+        num_vars * sizeof(GtkWidget *)
+    );
+
+    s_data.labels_fo_vars = g_malloc(
+        num_vars * sizeof(GtkWidget *)
+    );
+
+    s_data.labels_rest_vars = g_malloc(
+        num_rest * sizeof(GtkWidget **)
+    );
+
     for (int i = 0; i < num_rest; i++) {
-        s_data.labels_rest_vars[i] = g_malloc(num_vars * sizeof(GtkWidget *));
+        s_data.labels_rest_vars[i] = g_malloc(
+            num_vars * sizeof(GtkWidget *)
+        );
     }
 
-    s_data.entries_rest_coefs = g_malloc(num_rest * sizeof(GtkWidget **));
+    s_data.entries_rest_coefs = g_malloc(
+        num_rest * sizeof(GtkWidget **)
+    );
+
     for (int i = 0; i < num_rest; i++) {
-        s_data.entries_rest_coefs[i] = g_malloc(num_vars * sizeof(GtkWidget *));
+        s_data.entries_rest_coefs[i] = g_malloc(
+            num_vars * sizeof(GtkWidget *)
+        );
     }
-    s_data.entries_rest_ops = g_malloc(num_rest * sizeof(GtkWidget *));
-    s_data.entries_rest_rhs = g_malloc(num_rest * sizeof(GtkWidget *));
+
+    s_data.entries_rest_ops = g_malloc(
+        num_rest * sizeof(GtkWidget *)
+    );
+
+    s_data.entries_rest_rhs = g_malloc(
+        num_rest * sizeof(GtkWidget *)
+    );
+
+    // ==========================================
+    // CONSTRUIR MATRIZ DINÁMICA
+    // ==========================================
 
     int fila = 0;
 
+    // Título de variables
     GtkWidget *lbl_titulo_vars = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(lbl_titulo_vars), "<b>Nombrar Variables de Decisión:</b>");
-    gtk_grid_attach(GTK_GRID(grid), lbl_titulo_vars, 0, fila++, 2, 1);
+
+    gtk_label_set_markup(
+        GTK_LABEL(lbl_titulo_vars),
+        "<b>Nombrar Variables de Decisión:</b>"
+    );
+
+    gtk_grid_attach(
+        GTK_GRID(grid),
+        lbl_titulo_vars,
+        0, fila++, 2, 1
+    );
+
+    // ==========================================
+    // NOMBRES DE VARIABLES
+    // ==========================================
 
     for (int j = 0; j < num_vars; j++) {
+
         gchar temp_label[32];
-        g_snprintf(temp_label, sizeof(temp_label), "x%d:", j + 1);
+
+        g_snprintf(
+            temp_label,
+            sizeof(temp_label),
+            "x%d:",
+            j + 1
+        );
+
         GtkWidget *lbl_var = gtk_label_new(temp_label);
-        gtk_widget_set_halign(lbl_var, GTK_ALIGN_START);
-        gtk_grid_attach(GTK_GRID(grid), lbl_var, 0, fila, 1, 1);
+
+        gtk_widget_set_halign(
+            lbl_var,
+            GTK_ALIGN_START
+        );
+
+        gtk_grid_attach(
+            GTK_GRID(grid),
+            lbl_var,
+            0, fila, 1, 1
+        );
 
         GtkWidget *entry_nombre_var = gtk_entry_new();
-        g_snprintf(temp_label, sizeof(temp_label), "X%d", j + 1);
-        gtk_entry_set_text(GTK_ENTRY(entry_nombre_var), temp_label);
-        gtk_grid_attach(GTK_GRID(grid), entry_nombre_var, 1, fila, 1, 1);
+
+        g_snprintf(
+            temp_label,
+            sizeof(temp_label),
+            "X%d",
+            j + 1
+        );
+
+        gtk_entry_set_text(
+            GTK_ENTRY(entry_nombre_var),
+            temp_label
+        );
+
+        gtk_grid_attach(
+            GTK_GRID(grid),
+            entry_nombre_var,
+            1, fila, 1, 1
+        );
 
         s_data.entries_nombres_vars[j] = entry_nombre_var;
-        g_signal_connect(entry_nombre_var, "changed",
-                         G_CALLBACK(actualizar_etiquetas_variables), NULL);
+
+        g_signal_connect(
+            entry_nombre_var,
+            "changed",
+            G_CALLBACK(actualizar_etiquetas_variables),
+            NULL
+        );
+
         fila++;
     }
 
-    fila++; 
+    fila++;
+
+    // ==========================================
+    // FUNCIÓN OBJETIVO
+    // ==========================================
 
     GtkWidget *lbl_z_titulo = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(lbl_z_titulo), "<b>Función Objetivo:</b>");
-    gtk_grid_attach(GTK_GRID(grid), lbl_z_titulo, 0, fila++, 1, 1);
 
-    GtkWidget *box_fo = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_label_set_markup(
+        GTK_LABEL(lbl_z_titulo),
+        "<b>Función Objetivo:</b>"
+    );
 
+    gtk_grid_attach(
+        GTK_GRID(grid),
+        lbl_z_titulo,
+        0, fila++, 1, 1
+    );
+
+    GtkWidget *box_fo = gtk_box_new(
+        GTK_ORIENTATION_HORIZONTAL,
+        5
+    );
+
+    // Maximizar / Minimizar
     s_data.entry_opt = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(s_data.entry_opt), "Maximizar");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(s_data.entry_opt), "Minimizar");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(s_data.entry_opt), 0);
-    gtk_widget_set_size_request(s_data.entry_opt, 120, -1);
-    gtk_container_add(GTK_CONTAINER(box_fo), s_data.entry_opt);
+
+    gtk_combo_box_text_append_text(
+        GTK_COMBO_BOX_TEXT(s_data.entry_opt),
+        "Maximizar"
+    );
+
+    gtk_combo_box_text_append_text(
+        GTK_COMBO_BOX_TEXT(s_data.entry_opt),
+        "Minimizar"
+    );
+
+    gtk_combo_box_set_active(
+        GTK_COMBO_BOX(s_data.entry_opt),
+        0
+    );
+
+    gtk_widget_set_size_request(
+        s_data.entry_opt,
+        120,
+        -1
+    );
+
+    gtk_container_add(
+        GTK_CONTAINER(box_fo),
+        s_data.entry_opt
+    );
 
     GtkWidget *label_z = gtk_label_new("   Z =");
-    gtk_container_add(GTK_CONTAINER(box_fo), label_z);
 
+    gtk_container_add(
+        GTK_CONTAINER(box_fo),
+        label_z
+    );
+
+    // Coeficientes de la función objetivo
     for (int j = 0; j < num_vars; j++) {
+
         s_data.entries_fo_coefs[j] = gtk_entry_new();
-        gtk_entry_set_text(GTK_ENTRY(s_data.entries_fo_coefs[j]), "0");
-        gtk_widget_set_size_request(s_data.entries_fo_coefs[j], 50, -1);
-        gtk_container_add(GTK_CONTAINER(box_fo), s_data.entries_fo_coefs[j]);
+
+        gtk_entry_set_text(
+            GTK_ENTRY(s_data.entries_fo_coefs[j]),
+            "0"
+        );
+
+        gtk_widget_set_size_request(
+            s_data.entries_fo_coefs[j],
+            50,
+            -1
+        );
+
+        gtk_container_add(
+            GTK_CONTAINER(box_fo),
+            s_data.entries_fo_coefs[j]
+        );
 
         gchar temp_var[96];
-        g_snprintf(temp_var, sizeof(temp_var), " %s ", gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j])));
+
+        g_snprintf(
+            temp_var,
+            sizeof(temp_var),
+            " %s ",
+            gtk_entry_get_text(
+                GTK_ENTRY(s_data.entries_nombres_vars[j])
+            )
+        );
+
         GtkWidget *lbl_x = gtk_label_new(temp_var);
+
         s_data.labels_fo_vars[j] = lbl_x;
-        gtk_container_add(GTK_CONTAINER(box_fo), lbl_x);
+
+        gtk_container_add(
+            GTK_CONTAINER(box_fo),
+            lbl_x
+        );
 
         if (j < num_vars - 1) {
+
             GtkWidget *lbl_mas = gtk_label_new("+");
-            gtk_container_add(GTK_CONTAINER(box_fo), lbl_mas);
+
+            gtk_container_add(
+                GTK_CONTAINER(box_fo),
+                lbl_mas
+            );
         }
     }
-    gtk_grid_attach(GTK_GRID(grid), box_fo, 0, fila++, 1, 1);
+
+    gtk_grid_attach(
+        GTK_GRID(grid),
+        box_fo,
+        0, fila++, 1, 1
+    );
+
+    // ==========================================
+    // RESTRICCIONES
+    // ==========================================
 
     GtkWidget *label_sujeto = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(label_sujeto), "<b>Sujeto a:</b>");
-    gtk_widget_set_halign(label_sujeto, GTK_ALIGN_START);
-    gtk_grid_attach(GTK_GRID(grid), label_sujeto, 0, fila++, 1, 1);
+
+    gtk_label_set_markup(
+        GTK_LABEL(label_sujeto),
+        "<b>Sujeto a:</b>"
+    );
+
+    gtk_widget_set_halign(
+        label_sujeto,
+        GTK_ALIGN_START
+    );
+
+    gtk_grid_attach(
+        GTK_GRID(grid),
+        label_sujeto,
+        0, fila++, 1, 1
+    );
+
+    // ==========================================
+    // CONSTRUIR CADA RESTRICCIÓN
+    // ==========================================
 
     for (int i = 0; i < num_rest; i++) {
-        GtkWidget *box_rest = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+        GtkWidget *box_rest = gtk_box_new(
+            GTK_ORIENTATION_HORIZONTAL,
+            5
+        );
 
         for (int j = 0; j < num_vars; j++) {
-            s_data.entries_rest_coefs[i][j] = gtk_entry_new();
-            gtk_entry_set_text(GTK_ENTRY(s_data.entries_rest_coefs[i][j]), "0");
-            gtk_widget_set_size_request(s_data.entries_rest_coefs[i][j], 50, -1);
-            gtk_container_add(GTK_CONTAINER(box_rest), s_data.entries_rest_coefs[i][j]);
 
+            // Coeficiente
+            s_data.entries_rest_coefs[i][j] = gtk_entry_new();
+
+            gtk_entry_set_text(
+                GTK_ENTRY(s_data.entries_rest_coefs[i][j]),
+                "0"
+            );
+
+            gtk_widget_set_size_request(
+                s_data.entries_rest_coefs[i][j],
+                50,
+                -1
+            );
+
+            gtk_container_add(
+                GTK_CONTAINER(box_rest),
+                s_data.entries_rest_coefs[i][j]
+            );
+
+            // Nombre de variable
             gchar temp_var[96];
-            g_snprintf(temp_var, sizeof(temp_var), " %s ", gtk_entry_get_text(GTK_ENTRY(s_data.entries_nombres_vars[j])));
+
+            g_snprintf(
+                temp_var,
+                sizeof(temp_var),
+                " %s ",
+                gtk_entry_get_text(
+                    GTK_ENTRY(s_data.entries_nombres_vars[j])
+                )
+            );
+
             GtkWidget *lbl_x = gtk_label_new(temp_var);
+
             s_data.labels_rest_vars[i][j] = lbl_x;
-            gtk_container_add(GTK_CONTAINER(box_rest), lbl_x);
+
+            gtk_container_add(
+                GTK_CONTAINER(box_rest),
+                lbl_x
+            );
 
             if (j < num_vars - 1) {
+
                 GtkWidget *lbl_mas = gtk_label_new("+");
-                gtk_container_add(GTK_CONTAINER(box_rest), lbl_mas);
+
+                gtk_container_add(
+                    GTK_CONTAINER(box_rest),
+                    lbl_mas
+                );
             }
         }
 
+        // Operador de restricción
         s_data.entries_rest_ops[i] = gtk_label_new("≤");
-        gtk_widget_set_size_request(s_data.entries_rest_ops[i], 45, -1);
-        gtk_container_add(GTK_CONTAINER(box_rest), s_data.entries_rest_ops[i]);
 
+        gtk_widget_set_size_request(
+            s_data.entries_rest_ops[i],
+            45,
+            -1
+        );
+
+        gtk_container_add(
+            GTK_CONTAINER(box_rest),
+            s_data.entries_rest_ops[i]
+        );
+
+        // Lado derecho
         s_data.entries_rest_rhs[i] = gtk_entry_new();
-        gtk_entry_set_text(GTK_ENTRY(s_data.entries_rest_rhs[i]), "0");
-        gtk_widget_set_size_request(s_data.entries_rest_rhs[i], 50, -1);
-        gtk_container_add(GTK_CONTAINER(box_rest), s_data.entries_rest_rhs[i]);
 
-        gtk_grid_attach(GTK_GRID(grid), box_rest, 0, fila++, 1, 1);
+        gtk_entry_set_text(
+            GTK_ENTRY(s_data.entries_rest_rhs[i]),
+            "0"
+        );
+
+        gtk_widget_set_size_request(
+            s_data.entries_rest_rhs[i],
+            50,
+            -1
+        );
+
+        gtk_container_add(
+            GTK_CONTAINER(box_rest),
+            s_data.entries_rest_rhs[i]
+        );
+
+        gtk_grid_attach(
+            GTK_GRID(grid),
+            box_rest,
+            0, fila++, 1, 1
+        );
     }
+
+    // ==========================================
+    // MOSTRAR LOS ELEMENTOS CONSTRUIDOS
+    // ==========================================
+
+    gtk_widget_show_all(grid);
 }
+
 
 void on_btn_continuar_clicked(GtkButton *button, gpointer user_data) {
     AppData *app = (AppData *)user_data;

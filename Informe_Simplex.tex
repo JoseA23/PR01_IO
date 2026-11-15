@@ -84,12 +84,12 @@ La segunda ventana contiene un GtkGrid cuyas celdas se generan dinámicamente a 
 \item Una casilla de verificación para elegir si se muestran todas las tablas del procedimiento o únicamente la tabla final.
 \end{itemize}
 \chapter{Problema original}
-\textbf{Nombre:} problema\\
-\textbf{Objetivo:} Maximizar\[ Z = 4\,\text{X1} + 14\,\text{X2} \]
+\textbf{Nombre:} hhh\\
+\textbf{Objetivo:} Maximizar\[ Z = 40\,\text{X1} + 30\,\text{X2} \]
 \textbf{Sujeto a:}
 \begin{align*}
-2\,\text{X1} + 7\,\text{X2} &\leq 21 \\
-7\,\text{X1} + 2\,\text{X2} &\leq 21 \\
+2\,\text{X1} + 1\,\text{X2} &\leq 40 \\
+1\,\text{X1} + 2\,\text{X2} &\leq 50 \\
 \text{Todas las variables son no negativas.}\end{align*}
 \chapter{Desarrollo del algoritmo}
 \subsection{Tabla inicial}
@@ -98,54 +98,45 @@ La segunda ventana contiene un GtkGrid cuyas celdas se generan dinámicamente a 
 \begin{tabular}{crrrrr}\toprule
 Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
 \midrule
-$Z$ & -4 & -14 & 0 & 0 & 0 \\
-$s_{1}$ & 2 & 7 & 1 & 0 & 21 \\
-$s_{2}$ & 7 & 2 & 0 & 1 & 21 \\
+$Z$ & -40 & -30 & 0 & 0 & 0 \\
+$s_{1}$ & 2 & 1 & 1 & 0 & 40 \\
+$s_{2}$ & 1 & 2 & 0 & 1 & 50 \\
 \bottomrule\end{tabular}\end{table}
+\subsection{Tabla después de la iteración 1}
+\begin{table}[H]\centering\small
+\rowcolors{2}{azulclaro}{white}
+\begin{tabular}{crrrrr}\toprule
+Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
+\midrule
+$Z$ & \cellcolor{verde}0 & -10 & 20 & 0 & 800 \\
+$\text{X1}$ & \cellcolor{verde}\cellcolor{dorado!55}\bfseries 1 & 0,5 & 0,5 & 0 & 20 \\
+$s_{2}$ & \cellcolor{verde}0 & 1,5 & -0,5 & 1 & 30 \\
+\bottomrule\end{tabular}\end{table}
+\textbf{Pivote:} 2.\quad \textbf{Razón de la fila pivote:} $40/2 = 20$.\par
 \subsection{Tabla final}
 \begin{table}[H]\centering\small
 \rowcolors{2}{azulclaro}{white}
 \begin{tabular}{crrrrr}\toprule
 Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
 \midrule
-$Z$ & 0 & \cellcolor{verde}0 & 2 & 0 & 42 \\
-$\text{X2}$ & 0.28571 & \cellcolor{verde}\cellcolor{dorado!55}\bfseries 1 & 0.14286 & 0 & 3 \\
-$s_{2}$ & 6.4286 & \cellcolor{verde}0 & -0.28571 & 1 & 15 \\
+$Z$ & 0 & \cellcolor{verde}0 & 16,667 & 6,6667 & 1000 \\
+$\text{X1}$ & 1 & \cellcolor{verde}0 & 0,66667 & -0,33333 & 10 \\
+$\text{X2}$ & 0 & \cellcolor{verde}\cellcolor{dorado!55}\bfseries 1 & -0,33333 & 0,66667 & 20 \\
 \bottomrule\end{tabular}\end{table}
-\textbf{Pivote de la última iteración:} 7.\quad \textbf{Razón de la fila pivote:} $21/7 = 3$.\par
-\subsection{Segunda tabla final (solución alternativa)}
-\begin{table}[H]\centering\small
-\rowcolors{2}{azulclaro}{white}
-\begin{tabular}{crrrrr}\toprule
-Base & X1 & X2 & $s_{1}$ & $s_{2}$ & RHS \\
-\midrule
-$Z$ & 0 & 0 & 2 & 0 & 42 \\
-$\text{X2}$ & 0 & 1 & 0.15556 & -0.044444 & 2.3333 \\
-$\text{X1}$ & 1 & 0 & -0.044444 & 0.15556 & 2.3333 \\
-\bottomrule\end{tabular}\end{table}
+\textbf{Pivote de la última iteración:} 1,5.\quad \textbf{Razón de la fila pivote:} $30/1,5 = 20$.\par
 \chapter{Solución y análisis de resultados}
 \begin{center}\fbox{\parbox{0.88\textwidth}{\centering\Large\textbf{Solución óptima encontrada}}}\end{center}
-\begin{align*}\text{Valor óptimo: } Z^* &= 42\\
-\text{X1} &= 0\\
-\text{X2} &= 3\\
+\begin{align*}\text{Valor óptimo: } Z^* &= 1000\\
+\text{X1} &= 10\\
+\text{X2} &= 20\\
 \end{align*}
 \section{Variables de holgura}
 \begin{itemize}
 \item $s_{1}=0$
-\item $s_{2}=15$
-\end{itemize}
-\section{Soluciones múltiples}
-Se identificó otra solución óptima con el mismo valor objetivo $Z=42$.\begin{align*}
-\text{X1} &= 2.3333333\\
-\text{X2} &= 2.3333333\\
-\end{align*}Las soluciones sobre el segmento entre ambas soluciones también son óptimas.
-\begin{itemize}
-\item Solución alternativa 1: X1=0.58333, X2=2.8333
-\item Solución alternativa 2: X1=1.1667, X2=2.6667
-\item Solución alternativa 3: X1=1.75, X2=2.5
+\item $s_{2}=0$
 \end{itemize}
 \section{Resumen de ejecución}
-Se generaron 2 tablas y se realizaron 1 iteraciones.
+Se generaron 3 tablas y se realizaron 2 iteraciones.
 \chapter{Referencias}
 \renewcommand{\labelenumi}{[\theenumi]}
 \begin{enumerate}
